@@ -1,0 +1,17 @@
+[build]
+dist = "../dist/"
+
+[serve]
+# The address to serve on.
+address = "0.0.0.0"
+# The port to serve on.
+port = 7070
+# Open a browser tab once the initial build is complete.
+open = false
+# Disable auto-reload of the web app.
+no_autoreload = false
+
+[[proxy]]
+# This proxy specifies only the backend, which is the only required field. In this example,
+# request URIs are not modified when proxied.
+backend = "http://localhost:8080/api/"

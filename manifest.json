@@ -1,0 +1,18 @@
+{
+    "name": "Fueling App",
+    "short_name": "Fueling App",
+    "icons": [
+        {
+            "src": "./logo.png",
+            "sizes": "48x48 72x72 96x96 128x128 256x256 512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "lang": "de-DE",
+    "start_url": "./index.html",
+    "id":"./index.html",
+    "display": "standalone",
+    "background_color": "gray",
+    "theme_color": "gray"
+}
