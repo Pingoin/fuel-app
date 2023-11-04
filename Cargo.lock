@@ -103,6 +103,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sycamore",
+ "web-sys",
 ]
 
 [[package]]

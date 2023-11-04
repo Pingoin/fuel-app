@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
+use web_sys::window;
 
 use crate::utils::fetch;
 mod utils;
@@ -18,11 +19,23 @@ fn main() {
 #[component]
 fn App<G: Html>() -> View<G> {
     let currency: Signal<HashMap<String, Currency>> = create_signal(HashMap::new());
+{
+    let curr_text = get_stored_text("currencies",String::new()); 
+        if let Ok(devs) = serde_json::from_str::<HashMap<String, Currency>>(&curr_text) {
+            currency.set(devs);
+        }
+}
 
-    let price_nearby: Signal<f64> = create_signal(1.779);
-    let currency_nearby = create_signal(String::from("eur"));
-    let price_far: Signal<f64> = create_signal(5.99);
-    let currency_far = create_signal(String::from("pln"));
+    let price_nearby: Signal<f64> = create_signal(get_stored_number("price_nearby", 1.779));
+    create_effect(move || set_stored_number("price_nearby", price_nearby.get()));
+
+    let currency_nearby = create_signal(get_stored_text("currency_nearby", String::from("eur")));
+    create_effect(move || set_stored_text("currency_nearby", currency_nearby.with(|c| c.clone())));
+
+    let price_far: Signal<f64> = create_signal(get_stored_number("price_far", 5.779));
+    create_effect(move || set_stored_number("price_far", price_far.get()));
+    let currency_far = create_signal(get_stored_text("currency_far", String::from("pln")));
+    create_effect(move || set_stored_text("currency_far", currency_far.with(|c| c.clone())));
 
     let conversion_factor = create_memo(move || {
         let near_string = currency_nearby.with(|cur| cur.clone());
@@ -46,14 +59,13 @@ fn App<G: Html>() -> View<G> {
         near / far
     });
 
-    let price_far_converted=create_memo(move ||{
-        price_far.get()*conversion_factor.get()
-    });
+    let price_far_converted = create_memo(move || price_far.get() * conversion_factor.get());
 
     spawn_local_scoped(async move {
         fetch("https://www.floatrates.com/daily/eur.json", |response| {
             if let Ok(devs) = serde_json::from_str::<HashMap<String, Currency>>(&response) {
                 currency.set(devs);
+                set_stored_text("currencies", response)
             }
         })
         .await;
@@ -88,7 +100,7 @@ fn App<G: Html>() -> View<G> {
                 } else {
                     view! { } // Now you don't
                 })
-  
+
 
             }
         }
@@ -115,4 +127,39 @@ fn CurrencyOptions<G: Html>() -> View<G> {
 struct Currency {
     code: String,
     rate: f64,
+}
+
+fn get_stored_text(key: &str,default:String) -> String {
+    let mut result  = default;
+    if let Some(win) = window() {
+        if let Ok(Some(stor)) = win.local_storage() {
+            if let Ok(Some(store_result)) = stor.get(key).clone() {
+                result = store_result;
+            }
+        }
+    }
+    result
+}
+
+fn set_stored_text(key: &str, value: String) {
+    if let Some(win) = window() {
+        if let Ok(Some(stor)) = win.local_storage() {
+            let _ = stor.set(key, &value);
+        }
+    }
+}
+
+fn get_stored_number(key: &str, failure_value: f64) -> f64 {
+    let mut result = failure_value;
+
+    let text = get_stored_text(key,String::new()); {
+        if let Ok(number) = text.parse::<f64>() {
+            result = number;
+        }
+    }
+    result
+}
+
+fn set_stored_number(key: &str, value: f64) {
+    set_stored_text(key, value.to_string());
 }
