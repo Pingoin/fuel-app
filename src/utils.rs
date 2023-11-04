@@ -15,6 +15,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub async fn post<Fn, T>(path: &str, data: T, fun: Fn) 
 where
     Fn: FnOnce(String) ,
