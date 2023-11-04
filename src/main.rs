@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
-use web_sys::window;
 
-use crate::utils::fetch;
+use crate::utils::{fetch, set_stored_text, create_stored_signal};
 mod utils;
 
 fn main() {
@@ -18,24 +17,15 @@ fn main() {
 
 #[component]
 fn App<G: Html>() -> View<G> {
-    let currency: Signal<HashMap<String, Currency>> = create_signal(HashMap::new());
-{
-    let curr_text = get_stored_text("currencies",String::new()); 
-        if let Ok(devs) = serde_json::from_str::<HashMap<String, Currency>>(&curr_text) {
-            currency.set(devs);
-        }
-}
+    let currency: Signal<HashMap<String, Currency>> =
+        create_stored_signal(String::from("currencies"), HashMap::new());
 
-    let price_nearby: Signal<f64> = create_signal(get_stored_number("price_nearby", 1.779));
-    create_effect(move || set_stored_number("price_nearby", price_nearby.get()));
+    let price_nearby = create_stored_signal(String::from("price_nearby"), 1.779f64);
 
-    let currency_nearby = create_signal(get_stored_text("currency_nearby", String::from("eur")));
-    create_effect(move || set_stored_text("currency_nearby", currency_nearby.with(|c| c.clone())));
-
-    let price_far: Signal<f64> = create_signal(get_stored_number("price_far", 5.779));
-    create_effect(move || set_stored_number("price_far", price_far.get()));
-    let currency_far = create_signal(get_stored_text("currency_far", String::from("pln")));
-    create_effect(move || set_stored_text("currency_far", currency_far.with(|c| c.clone())));
+    let currency_nearby =
+        create_stored_signal(String::from("currency_nearby"), String::from("eur"));
+    let price_far = create_stored_signal(String::from("price_far"), 5.779f64);
+    let currency_far = create_stored_signal(String::from("currency_far"), String::from("pln"));
 
     let conversion_factor = create_memo(move || {
         let near_string = currency_nearby.with(|cur| cur.clone());
@@ -127,39 +117,4 @@ fn CurrencyOptions<G: Html>() -> View<G> {
 struct Currency {
     code: String,
     rate: f64,
-}
-
-fn get_stored_text(key: &str,default:String) -> String {
-    let mut result  = default;
-    if let Some(win) = window() {
-        if let Ok(Some(stor)) = win.local_storage() {
-            if let Ok(Some(store_result)) = stor.get(key).clone() {
-                result = store_result;
-            }
-        }
-    }
-    result
-}
-
-fn set_stored_text(key: &str, value: String) {
-    if let Some(win) = window() {
-        if let Ok(Some(stor)) = win.local_storage() {
-            let _ = stor.set(key, &value);
-        }
-    }
-}
-
-fn get_stored_number(key: &str, failure_value: f64) -> f64 {
-    let mut result = failure_value;
-
-    let text = get_stored_text(key,String::new()); {
-        if let Ok(number) = text.parse::<f64>() {
-            result = number;
-        }
-    }
-    result
-}
-
-fn set_stored_number(key: &str, value: f64) {
-    set_stored_text(key, value.to_string());
 }
