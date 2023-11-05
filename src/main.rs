@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use serde::{ Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
 
-use crate::utils::{fetch, create_stored_signal};
+use crate::utils::{create_stored_signal, fetch};
 mod utils;
 
 fn main() {
@@ -27,9 +27,9 @@ fn App<G: Html>() -> View<G> {
     let price_far = create_stored_signal(String::from("price_far"), 5.779f64);
     let currency_far = create_stored_signal(String::from("currency_far"), String::from("pln"));
 
-    let fuel_usage=create_stored_signal(String::from("fuel_usage"), 5.0f64);
-    let fueling_detour_km=create_stored_signal(String::from("fueling_detour_km"), 50.0f64);
-    let fuel_amount=create_stored_signal(String::from("fuel amount"), 45.0f64);
+    let fuel_usage = create_stored_signal(String::from("fuel_usage"), 5.0f64);
+    let fueling_detour_km = create_stored_signal(String::from("fueling_detour_km"), 50.0f64);
+    let fuel_amount = create_stored_signal(String::from("fuel amount"), 45.0f64);
 
     let conversion_factor = create_memo(move || {
         let near_string = currency_nearby.with(|cur| cur.clone());
@@ -55,21 +55,16 @@ fn App<G: Html>() -> View<G> {
 
     let price_far_converted = create_memo(move || price_far.get() * conversion_factor.get());
 
-    let fuel_kosts_near=create_memo(move || {
-        price_nearby.get()*fuel_amount.get()
+    let fuel_kosts_near = create_memo(move || price_nearby.get() * fuel_amount.get());
+
+    let fuel_kosts_far = create_memo(move || price_far_converted.get() * fuel_amount.get());
+
+    let detour_kosts = create_memo(move || {
+        price_far_converted.get() * fuel_usage.get() * fueling_detour_km.get() / 100.0
     });
 
-    let fuel_kosts_far=create_memo(move || {
-        price_far_converted.get()*fuel_amount.get()
-    });
-
-    let detour_kosts=create_memo(move || {
-        price_far_converted.get()*fuel_usage.get()*fueling_detour_km.get()/100.0
-    });
-
-    let savings=create_memo(move || {
-       fuel_kosts_near.get()-fuel_kosts_far.get()-detour_kosts.get()
-    });
+    let savings =
+        create_memo(move || fuel_kosts_near.get() - fuel_kosts_far.get() - detour_kosts.get());
 
     currency.track();
     spawn_local_scoped(async move {
@@ -84,70 +79,33 @@ fn App<G: Html>() -> View<G> {
     view! {
         header{}
         main{
-            article(class="dual-column"){
-                span{"Fuel price Nearby"}
-                div{
-                    input(bind:valueAsNumber=price_nearby, type="number", min="0", step="0.01")
-                    " "
+            article(class="triple-column"){
+                ValueInput(lable=String::from("Fuel price Nearby"),value=price_nearby){             
                     select(bind:value=currency_nearby){
                         CurrencyOptions{}
                     }
                 }
-                span{"Fuel price far"}
-                div{
-                    input(bind:valueAsNumber=price_far, type="number", min="0", step="0.01")
-                    " "
+                ValueInput(lable=String::from("Fuel price far"),value=price_far){             
                     select(bind:value=currency_far){
                         CurrencyOptions{}
                     }
                 }
                 (if conversion_factor.get() !=1.0{
                     view!{
-                        span{"Conversion Factor"}
-                        span{(conversion_factor.get())}
-                        span{"Price converted"}
-                        span{(price_far_converted.get())}
+                        ValueOutput(lable="Conversion Factor".to_string(),value=conversion_factor){""}
+                        ValueOutput(lable="Price converted".to_string(),value=price_far_converted){"€/l"}
                     }
 
                 } else {
                     view! { } // Now you don't
                 })
-                span{" Fuel usage"}
-                div{
-                    input(bind:valueAsNumber=fuel_usage, type="number", min="0", step="0.1")
-                    "l/100 km"
-                }
-                span{"Detour to cheaper fuelstation"}
-                div{
-                    input(bind:valueAsNumber=fueling_detour_km, type="number", min="0", step="1")
-                    " km"
-                }
-                span{"fuel amount"}
-                div{
-                    input(bind:valueAsNumber=fuel_amount, type="number", min="0", step="1")
-                    " l"
-                }
-                span{"fuel kosts near"}
-                div{
-                    ((fuel_kosts_near.get()*100.0).round() / 100.0)
-                    " €"
-                }
-                span{"fuel kosts far"}
-                div{
-                    ((fuel_kosts_far.get()*100.0).round() / 100.0)
-                    " €"
-                }
-                span{"detour kosts far"}
-                div{
-                    ((detour_kosts.get()*100.0).round() / 100.0)
-                    " €"
-                }
-                span{"savings"}
-                div{
-                    ((savings.get()*100.0).round() / 100.0)
-                    " €"
-                }
-
+                ValueInput(lable="Fuel usage".to_string(),value=fuel_usage){"l/100 km"}
+                ValueInput(lable="Detour to cheaper fuelstation".to_string(),value=fueling_detour_km){"km"}
+                ValueInput(lable="Fuel amount".to_string(),value=fuel_amount){"l"}
+                ValueOutput(lable="Fuel kosts near".to_string(),value=fuel_kosts_near){"€"}
+                ValueOutput(lable="Fuel kosts far".to_string(),value=fuel_kosts_far){"€"}
+                ValueOutput(lable="Detour kosts".to_string(),value=detour_kosts){"€"}
+                ValueOutput(lable="Savings".to_string(),value=savings){"€"}
             }
         }
         footer{
@@ -173,4 +131,38 @@ fn CurrencyOptions<G: Html>() -> View<G> {
 struct Currency {
     code: String,
     rate: f64,
+}
+
+#[derive(Props)]
+pub struct ValueInputProps<G: Html> {
+    children: Children<G>,
+    lable: String,
+    value: Signal<f64>,
+}
+
+#[derive(Props)]
+pub struct ValueOutputProps<G: Html> {
+    children: Children<G>,
+    lable: String,
+    value: ReadSignal<f64>,
+}
+
+#[component]
+fn ValueOutput<G: Html>(props: ValueOutputProps<G>) -> View<G> {
+    let children = props.children.call();
+    view! {
+            span{(props.lable)}
+            span{(((props.value.get()*100.0).round() / 100.0))}
+            div{(children)}
+    }
+}
+
+#[component]
+fn ValueInput<G: Html>(props: ValueInputProps<G>) -> View<G> {
+    let children = props.children.call();
+    view! {
+            span{(props.lable)}
+            input(bind:valueAsNumber=props.value, type="number", min="0", step="0.1",maxlength="4",size="8")
+            div{(children)}
+    }
 }
