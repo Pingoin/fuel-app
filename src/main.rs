@@ -1,13 +1,20 @@
 use std::collections::HashMap;
 
+// You must import in each files when you wants use `t!` macro.
+use rust_i18n::t;
+
+rust_i18n::i18n!("locales",fallback="en");
 use serde::{Deserialize, Serialize};
 use sycamore::futures::spawn_local_scoped;
 use sycamore::prelude::*;
+use utils::get_lang_code;
 
 use crate::utils::{create_stored_signal, fetch};
 mod utils;
 
 fn main() {
+    rust_i18n::set_locale(get_lang_code().as_str());
+
     sycamore::render(|| {
         view! {
             App{}
@@ -75,37 +82,36 @@ fn App<G: Html>() -> View<G> {
         })
         .await;
     });
-
     view! {
-        header{}
+        header{(get_lang_code())}
         main{
             article(class="triple-column"){
-                ValueInput(lable=String::from("Fuel price Nearby"),value=price_nearby){             
+                ValueInput(lable=t!("price_nearby"),value=price_nearby){
                     select(bind:value=currency_nearby){
                         CurrencyOptions{}
                     }
                 }
-                ValueInput(lable=String::from("Fuel price far"),value=price_far){             
+                ValueInput(lable=t!("price_far"),value=price_far){
                     select(bind:value=currency_far){
                         CurrencyOptions{}
                     }
                 }
                 (if conversion_factor.get() !=1.0{
                     view!{
-                        ValueOutput(lable="Conversion Factor".to_string(),value=conversion_factor){""}
-                        ValueOutput(lable="Price converted".to_string(),value=price_far_converted){"€/l"}
+                        ValueOutput(lable=t!("conversion_factor"),value=conversion_factor){""}
+                        ValueOutput(lable=t!("price_far_converted"),value=price_far_converted){"€/l"}
                     }
 
                 } else {
                     view! { } // Now you don't
                 })
-                ValueInput(lable="Fuel usage".to_string(),value=fuel_usage){"l/100 km"}
-                ValueInput(lable="Detour to cheaper fuelstation".to_string(),value=fueling_detour_km){"km"}
-                ValueInput(lable="Fuel amount".to_string(),value=fuel_amount){"l"}
-                ValueOutput(lable="Fuel kosts near".to_string(),value=fuel_kosts_near){"€"}
-                ValueOutput(lable="Fuel kosts far".to_string(),value=fuel_kosts_far){"€"}
-                ValueOutput(lable="Detour kosts".to_string(),value=detour_kosts){"€"}
-                ValueOutput(lable="Savings".to_string(),value=savings){"€"}
+                ValueInput(lable=t!("fuel_usage"),value=fuel_usage){"l/100 km"}
+                ValueInput(lable=t!("fueling_detour_km"),value=fueling_detour_km){"km"}
+                ValueInput(lable=t!("fuel_amount"),value=fuel_amount){"l"}
+                ValueOutput(lable=t!("fuel_costs_near"),value=fuel_kosts_near){"€"}
+                ValueOutput(lable=t!("fuel_costs_far"),value=fuel_kosts_far){"€"}
+                ValueOutput(lable=t!("detour_kosts"),value=detour_kosts){"€"}
+                ValueOutput(lable=t!("savings"),value=savings){"€"}
             }
         }
         footer{

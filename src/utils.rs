@@ -1,6 +1,6 @@
 use gloo_net::http::Request;
-use sycamore::prelude::*;
-use web_sys::window;
+use sycamore::{prelude::*, web::html::nav};
+use web_sys::{window};
 use serde::{ Deserialize, Serialize};
 
 pub async fn fetch<Fn>(path: &str, fun: Fn)
@@ -35,6 +35,18 @@ where
     } 
 }
 
+pub fn get_lang_code()->String{
+    let mut result="en".to_string();
+    if let Some(win) = window() {
+        let navi=win.navigator();
+        if let Some(res) = navi.language()  {
+         result=res;   
+        }
+    }
+
+
+    result
+}
 
 pub fn get_stored_text(key: &str, default: String) -> String {
     let mut result = default;
